@@ -1,0 +1,17 @@
+# Data Analysis and Manipulation
+pandas==1.5.3
+numpy==1.26.4
+
+# Visualization
+matplotlib
+seaborn
+folium
+
+# Geospatial Analysis
+geopandas
+basemap
+shapely
+
+# Utilities
+requests
+tqdm

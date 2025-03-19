@@ -11,7 +11,6 @@
 To use this package locally, clone the repository and install dependencies from `requirements.txt`:
 ```bash
 git clone https://github.com/Louis-Li-dev/Geo-Tools.git
-cd Geo-Tools
 pip install -r requirements.txt
 ```
 ---

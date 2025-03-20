@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>geo_tools Documentation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Basic Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Body & Typography */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fefefe;
+      color: #333;
+      line-height: 1.6;
+      transition: background-color 0.3s, color 0.3s;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    p, ul, li, pre {
+      margin-bottom: 16px;
+    }
+    ul {
+      margin-left: 20px;
+      list-style-type: disc;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    code {
+      font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+    }
+
+    /* Header */
+    header {
+      padding: 20px;
+      background-color: #4CAF50;
+      color: #fff;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    /* Horizontal Rule */
+    hr {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 20px 0;
+    }
+
+    /* Dark Mode */
+    .dark-mode {
+      background-color: #2c2c2c;
+      color: #d2d2d2;
+    }
+    .dark-mode header {
+      background-color: #444;
+    }
+    .dark-mode pre {
+        background-color: #373834;
+      color: #dedede;
+    }
+    .dark-mode code {
+      background-color: #282828;
+      color: #dedede;
+    }
+
+    /* Toggle Button */
+    .toggle-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #4CAF50;
+      border: none;
+      color: #fff;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+      z-index: 999;
+    }
+    .dark-mode .toggle-button {
+      background-color: #555;
+    }
+
+    /* Tabs Container */
+    .tab-container {
+      width: 90%;
+      max-width: 1200px;
+      margin: 0 auto 50px;
+    }
+
+    /* Tab Buttons */
+    .tab-buttons {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .tab-button {
+      flex: 1;
+      padding: 12px 10px;
+      border: 1px solid #ccc;
+      background: #eee;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.3s;
+    }
+    .tab-button:hover {
+      background: #ddd;
+    }
+    .tab-button.active {
+      background: #4CAF50;
+      color: #fff;
+      border-color: #4CAF50;
+    }
+    .dark-mode .tab-button {
+      background: #444;
+      border-color: #555;
+      color: #ccc;
+    }
+    .dark-mode .tab-button:hover {
+      background: #555;
+    }
+    .dark-mode .tab-button.active {
+      background: #2c7a2c;
+      border-color: #2c7a2c;
+      color: #fff;
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 0 4px 4px 4px;
+      min-height: 200px;
+      background: #fff;
+    }
+    .dark-mode .tab-content {
+      background: #3c3c3c;
+      border-color: #555;
+    }
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+    
+  
+  <!-- Dark Mode Toggle -->
+  <button class="toggle-button" id="toggleDarkMode">Toggle Dark Mode</button>
+
+  <!-- Header -->
+  <header>
+    <h1>geo_tools Documentation</h1>
+    <p>A geospatial tool for looking up countries from coordinates and visualizing geospatial data.</p>
+  </header>
+
+  <!-- Tabs Container -->
+  <div class="tab-container">
+    <!-- Tab Buttons -->
+    <div class="tab-buttons">
+      <button class="tab-button active" data-tab="setup">Setup</button>
+      <button class="tab-button" data-tab="geo_api">geo_api</button>
+      <button class="tab-button" data-tab="geo_plot">geo_plot</button>
+    </div>
+
+    <!-- Tab Content: Setup -->
+    <div id="setup" class="tab-content active">
+      <h2>Setup</h2>
+      <hr>
+      <p>Install <strong>geo_tools</strong> via pip:</p>
+      <pre><code>pip install git+https://github.com/Louis-Li-dev/Geo-Tools.git</code></pre>
+
+        This package requires Python 3.6+ and the dependencies listed in the setup.py file (pandas, numpy,
+        matplotlib, etc.).
+      </p>
+    </div>
+
+    <!-- Tab Content: geo_api -->
+    <div id="geo_api" class="tab-content">
+      <h2>geo_api</h2>
+      <hr>
+      <p>The <code>geo_api</code> package provides tools for coordinate lookups and transformations.</p>
+      <h3>CountryLocator</h3>
+      <hr>
+      <p>
+        <strong>CountryLocator</strong> downloads and caches GeoJSON data, prepares country geometries, and allows you to look up the country for a given coordinate. In addition to basic lookup functionality, it supports persistent caching of coordinate lookup results.
+      </p>
+      <ul>
+        <li><strong>geojson_url</strong> (str): URL for the GeoJSON file containing country data.</li>
+        <li><strong>cache_path</strong> (str): Local path to save or load the GeoJSON data.</li>
+        <li><strong>lookup_cache_path</strong> (str): Path to store/load the persistent lookup cache for coordinate queries.</li>
+        <li><strong>auto_install</strong> (bool): If True, downloads the data if not found locally.</li>
+        <li><strong>auto_save_lookup_cache</strong> (bool): If True, automatically flushes the lookup cache to disk after lookups.</li>
+        <li><strong>verbose</strong> (bool): Enables detailed status messages.</li>
+      </ul>
+      <p>
+        <strong>Example:</strong>
+      </p>
+      <pre><code class="language-python">
+      from geo_tools.geo_api.coordinate_lookup import CountryLocator
+      
+      # Initialize with a persistent lookup cache and automatic saving enabled
+      locator = CountryLocator(
+          lookup_cache_path="lookup_cache.pkl",
+          auto_install=True,
+          auto_save_lookup_cache=True,
+          verbose=True
+      )
+      
+      # Single coordinate lookup:
+      country = locator.get_country(-122.4194, 37.7749)
+      print("Country:", country)
+      
+      # Lookup for multiple coordinates:
+      coords = [(-122.4194, 37.7749), (2.3522, 48.8566)]
+      countries = locator.lookup(coords)
+      print("Countries:", countries)
+      
+      # Optionally, manually flush the lookup cache if auto-saving is disabled:
+      locator.flush_cache()
+      </code></pre>
+      
+
+      <h3>CoordinateGrid</h3>
+      <hr>
+      <p>
+        <strong>CoordinateGrid</strong> discretizes float coordinates into grid cells. It supports scaling methods
+        (<code>none</code>, <code>minmax</code>, or <code>standard</code>), inverse transformations, and grid plotting.
+      </p>
+      <ul>
+        <li><strong>cell_size</strong> (float): Size of each grid cell.</li>
+        <li><strong>scaling_method</strong> (str): Scaling option (<code>"none"</code>, <code>"minmax"</code>, or <code>"standard"</code>).</li>
+        <li><strong>verbose</strong> (bool): Enables detailed output.</li>
+      </ul>
+      <p><strong>Example:</strong></p>
+      <pre><code class="language-python">
+from geo_tools.geo_api.coordinate_transform import CoordinateGrid
+import pandas as pd
+
+df = pd.DataFrame({
+    'longitude': [115, 120, 125],
+    'latitude': [80, 85, 90]
+})
+
+grid = CoordinateGrid(cell_size=10, scaling_method="none", verbose=True)
+fitted_df = grid.fit(df=df, lon_col='longitude', lat_col='latitude')
+print(fitted_df.head())
+
+# Transform a single coordinate
+cell = grid.transform(117.5, 82.5)
+print("Grid cell:", cell)
+
+# Inverse transform
+original = grid.inverse_transform(cell[0], cell[1], method="center")
+print("Original coordinates:", original)
+      </code></pre>
+
+      <h3>CoordDiscretizer</h3>
+      <hr>
+      <p>
+        <strong>CoordDiscretizer</strong> converts check-in data into sequences or matrices by discretizing coordinates.
+        It groups data by user and day, returning either a sequence of visited grid cells or a matrix representation.
+      </p>
+      <ul>
+        <li><strong>start_val</strong> (int): Starting value for order marking.</li>
+        <li><strong>mode</strong> (str): <code>"order"</code> for sequential marking or <code>"binary"</code> for flagging.</li>
+        <li><strong>output</strong> (str): <code>"sequence"</code> returns lists; <code>"matrix"</code> returns 2D arrays.</li>
+        <li><strong>verbose</strong> (bool): Enables detailed logging.</li>
+      </ul>
+      <p><strong>Example:</strong></p>
+      <pre><code class="language-python">
+from geo_tools.geo_api.coordinate_transform import CoordDiscretizer
+import pandas as pd
+
+checkins = pd.DataFrame({
+    'Uid': [0, 0, 1, 1],
+    'Timestamp': ["2021-01-01 10:00:00", "2021-01-01 12:00:00",
+                  "2021-01-02 09:00:00", "2021-01-02 09:05:00"],
+    'Date': ["2021-01-01", "2021-01-01", "2021-01-02", "2021-01-02"],
+    'Longitude': [115, 115, 120, 120],
+    'Latitude': [80, 81, 85, 86]
+})
+
+discretizer = CoordDiscretizer(start_val=1, mode="order", output="sequence", verbose=True)
+uid_sequences = discretizer.fit_transform(checkins, uid_col="Uid", time_col="Timestamp", date_col="Date",
+                                           lat_col="Latitude", lon_col="Longitude")
+print("UID Sequences:", uid_sequences)
+
+# Inverse transform:
+recovered = discretizer.inverse_transform(uid_sequences)
+print("Recovered Sequences:", recovered)
+      </code></pre>
+    </div>
+
+    <!-- Tab Content: geo_plot -->
+    <div id="geo_plot" class="tab-content">
+      <h2>geo_plot</h2>
+      <hr>
+      <p>The <code>geo_plot</code> package offers visualization tools for geospatial data.</p>
+
+      <h3>CoordinatePlotter</h3>
+      <hr>
+      <p>
+        <strong>CoordinatePlotter</strong> uses Matplotlib and Basemap to plot latitude/longitude data.
+        It supports filtering by user, year, and sorting by time.
+      </p>
+      <ul>
+        <li><strong>df</strong> (pd.DataFrame): DataFrame containing <code>'Latitude'</code> and <code>'Longitude'</code>.</li>
+        <li><strong>uid</strong> (int, optional): Filter data by user ID.</li>
+        <li><strong>year</strong> (int, optional): Filter data by year.</li>
+        <li><strong>num_of_samples</strong> (int, optional): Limit the number of plotted samples.</li>
+        <li><strong>time_columns</strong> (list, optional): Columns used for chronological sorting.</li>
+      </ul>
+      <p><strong>Example:</strong></p>
+      <pre><code class="language-python">
+from geo_tools.geo_plot.map_plot import CoordinatePlotter
+import pandas as pd
+
+df_map = pd.DataFrame({
+    'Uid': [1, 1, 2, 2],
+    'Year': [2021, 2021, 2021, 2021],
+    'Latitude': [37.7749, 37.7849, 40.7128, 40.7306],
+    'Longitude': [-122.4194, -122.4094, -74.0060, -73.9352]
+})
+
+plotter = CoordinatePlotter(df=df_map, uid=1, year=2021, num_of_samples=None,
+                            time_columns=['Year'], margin=1.5, figsize=(8,6))
+plotter.plot(title="User 1 Check-ins", point_color='blue')
+      </code></pre>
+
+      <h3>plot_and_compare</h3>
+      <hr>
+      <p>
+        <strong>plot_and_compare</strong> is a utility class for visualizing and comparing results in 1D, 2D, or 3D.
+        It helps you compare ground truth data against predictions.
+      </p>
+      <ul>
+        <li><strong>results</strong> (list): List of NumPy arrays or lists to compare.</li>
+        <li><strong>names</strong> (list, optional): Names corresponding to each result.</li>
+        <li><strong>use_seaborn</strong> (bool): Whether to use Seaborn for 2D heatmaps.</li>
+      </ul>
+      <p><strong>Example:</strong></p>
+      <pre><code class="language-python">
+from geo_tools.geo_plot.square_plot import plot_and_compare
+import numpy as np
+
+data_gt = np.random.rand(10)
+data_pred = data_gt + np.random.normal(0, 0.1, 10)
+
+comparer = plot_and_compare([data_gt, data_pred], names=["Ground Truth", "Prediction"])
+comparer.plot(figsize=(12,4), cmap='viridis')
+      </code></pre>
+    </div>
+  </div>
+
+  <script>
+    // Dark Mode Toggle with localStorage
+    document.addEventListener("DOMContentLoaded", function() {
+      const toggleButton = document.getElementById("toggleDarkMode");
+      const body = document.body;
+
+      if (localStorage.getItem("darkMode") === "enabled") {
+        body.classList.add("dark-mode");
+      }
+
+      toggleButton.addEventListener("click", function() {
+        body.classList.toggle("dark-mode");
+        if (body.classList.contains("dark-mode")) {
+          localStorage.setItem("darkMode", "enabled");
+        } else {
+          localStorage.setItem("darkMode", "disabled");
+        }
+      });
+
+      // Tab Switching
+      const tabButtons = document.querySelectorAll(".tab-button");
+      const tabContents = document.querySelectorAll(".tab-content");
+
+      tabButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          tabButtons.forEach(btn => btn.classList.remove("active"));
+          tabContents.forEach(tc => tc.classList.remove("active"));
+          button.classList.add("active");
+          const tabId = button.getAttribute("data-tab");
+          document.getElementById(tabId).classList.add("active");
+        });
+      });
+    });
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  <script>
+    // Initialize syntax highlighting on all code blocks
+    hljs.highlightAll();
+  </script>
+</body>
+</html>

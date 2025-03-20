@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Dict, List, Tuple, Union, Optional
 
 class CoordinateGrid:
     def __init__(self, cell_size, scaling_method="none", verbose=False):
@@ -343,6 +344,183 @@ class CoordinateGrid:
         plt.grid(False)
         plt.show()
 
+class CoordDiscretizer:
+    def __init__(self, start_val: int = 1, mode: str = "order", output: str = "sequence", verbose: bool = False) -> None:
+        """
+        Initialize the CoordDiscretizer.
+
+        Parameters:
+            start_val (int): The starting value for order-based marking.
+            mode (str): "order" or "binary". In "order" mode, visited cells will be marked 
+                        by the order of visit (start_val, start_val+1, etc.). In "binary" mode,
+                        visited cells are simply marked as 1.
+            output (str): "sequence" or "matrix". If "sequence", the transformation returns a 
+                          dictionary mapping each UID to a list of (cell_x, cell_y) tuples (in visit order).
+                          If "matrix", the transformation returns a dictionary mapping each UID to a 
+                          2D numpy array (matrix) with the visited cells marked.
+            verbose (bool): If True, prints out detailed status messages.
+        """
+        if mode not in ["order", "binary"]:
+            raise ValueError("mode must be 'order' or 'binary'")
+        if output not in ["sequence", "matrix"]:
+            raise ValueError("output must be 'sequence' or 'matrix'")
+        self.start_val: int = start_val
+        self.mode: str = mode
+        self.output: str = output
+        self.verbose: bool = verbose
+        self._scaling_info: Optional[Dict[str, Union[str, float]]] = None
+        self.fitted_data: Optional[Dict[str, np.ndarray]] = None
+        # In our effective coordinate space, data will be centered to (0,0)
+        self.global_min_effective: Tuple[int, int] = (0, 0)
+        # For now, we assume no additional scaling is applied.
+        # (You can extend this class to include scaling if needed.)
+        self.scaling_method: str = "none"
+
+    def _apply_scaling(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Scale the raw coordinate arrays (x, y) according to the selected scaling method.
+        Returns the effective coordinates and stores the parameters needed for inversion.
+        For now, only 'none' is implemented (which centers the data).
+        """
+        if self.scaling_method == "none":
+            min_x, min_y = np.min(x), np.min(y)
+            effective_x = x - min_x
+            effective_y = y - min_y
+            self._scaling_info = {"method": "none", "min_x": min_x, "min_y": min_y}
+            if self.verbose:
+                print(f"[Verbose] Scaling method: none. Computed global min: ({min_x}, {min_y}).")
+        else:
+            raise ValueError("Only 'none' scaling is implemented in this version.")
+        return effective_x, effective_y
+
+    def _inverse_scaling(self, effective_x: np.ndarray, effective_y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Inverse the scaling transformation on effective coordinates to recover original values.
+        """
+        info = self._scaling_info
+        if info is None:
+            raise ValueError("Scaling info not available. Call fit_transform first.")
+        if info["method"] == "none":
+            orig_x = effective_x + info["min_x"]
+            orig_y = effective_y + info["min_y"]
+        else:
+            raise ValueError("Only 'none' scaling is implemented in this version.")
+        return orig_x, orig_y
+
+    def fit_transform(
+        self,
+        df: pd.DataFrame,
+        uid_col: str = "Uid",
+        time_col: str = "Timestamp",
+        date_col: str = "Date",
+        lat_col: str = "Latitude",
+        lon_col: str = "Longitude"
+    ) -> Union[Dict[Union[str, int], List[Tuple[int, int]]], Dict[Union[str, int], np.ndarray]]:
+        """
+        Transforms coordinate data into sequences by UID.
+
+        Steps:
+          1. Ensure the Timestamp column is datetime.
+          2. For each UID and Date, keep the first record (earliest visit).
+          3. Drop duplicate grid cells for each UID.
+          4. Group by UID to form a sequence of grid cell visits (ordered by Timestamp).
+
+        Depending on self.output, returns either:
+          - A dictionary mapping each UID to a list of (cell_x, cell_y) tuples.
+          - A dictionary mapping each UID to a 2D numpy array (matrix) where visited cells are marked.
+            In "order" mode, cells are filled with increasing order numbers (starting at start_val);
+            in "binary" mode, visited cells are marked with 1.
+
+        Returns:
+            A dictionary mapping UID to a sequence or matrix.
+        """
+        # Ensure the timestamp column is in datetime format.
+        df[time_col] = pd.to_datetime(df[time_col])
+        # Step 1: For each UID and Date, select the first record (earliest timestamp).
+        daily_first = df.sort_values(time_col).groupby([uid_col, date_col], as_index=False).first()
+        # Step 2: Drop duplicate grid cells for each UID.
+        final_df = daily_first.drop_duplicates(subset=[uid_col, lon_col, lat_col], keep="first")
+        # Group by UID to form sequences.
+        sequences: Dict[Union[str, int], List[Tuple[int, int]]] = {}
+        for uid, group in final_df.groupby(uid_col):
+            group_sorted = group.sort_values(time_col)
+            seq: List[Tuple[int, int]] = list(zip(group_sorted[lon_col], group_sorted[lat_col]))
+            sequences[uid] = seq
+
+        if self.output == "sequence":
+            return sequences
+
+        # Otherwise, create matrix representations.
+        matrices: Dict[Union[str, int], np.ndarray] = {}
+        for uid, seq in sequences.items():
+            if not seq:
+                matrices[uid] = np.array([])
+                continue
+            xs, ys = zip(*seq)
+            max_x, max_y = max(xs), max(ys)
+            mat = np.zeros((max_x + 1, max_y + 1), dtype=int)
+            if self.mode == "order":
+                val = self.start_val
+                for (x, y) in seq:
+                    mat[x, y] = val
+                    val += 1
+            elif self.mode == "binary":
+                for (x, y) in seq:
+                    mat[x, y] = 1
+            matrices[uid] = mat
+        return matrices
+
+    def inverse_transform(
+        self,
+        input_data: Union[
+            np.ndarray,
+            Dict[Union[str, int], np.ndarray],
+            Dict[Union[str, int], List[Tuple[int, int]]]
+        ],
+        method: str = "center"
+    ) -> Union[List[Tuple[int, int]], Dict[Union[str, int], List[Tuple[int, int]]]]:
+        """
+        Inverse transforms grid cell indices back to a list of coordinates.
+
+        Parameters:
+            input_data: Either a single matrix (np.ndarray) or a dictionary (as produced by fit_transform)
+                        mapping UID to either a matrix or a sequence.
+            method (str): "center" (default) returns the center of the grid cell; "corner" returns the lower left corner.
+
+        Returns:
+            If input_data is a matrix, returns a list of (cell_x, cell_y) tuples.
+            If input_data is a dictionary, returns a dictionary mapping each UID to a list of coordinates.
+        """
+        def _process_matrix(mat: np.ndarray) -> List[Tuple[int, int]]:
+            if np.max(mat) > 1:
+                # Order mode: sort coordinates by the order value.
+                coords = np.argwhere(mat > 0)
+                order_vals = [mat[x, y] for x, y in coords]
+                sorted_coords = [tuple(coord) for _, coord in sorted(zip(order_vals, coords), key=lambda pair: pair[0])]
+                return sorted_coords
+            else:
+                # Binary mode: return coordinates in random order.
+                coords = np.argwhere(mat > 0)
+                coords_list = [tuple(coord) for coord in coords]
+                np.random.shuffle(coords_list)
+                return coords_list
+
+        if isinstance(input_data, np.ndarray):
+            return _process_matrix(input_data)
+        elif isinstance(input_data, dict):
+            result: Dict[Union[str, int], List[Tuple[int, int]]] = {}
+            for uid, value in input_data.items():
+                if isinstance(value, np.ndarray):
+                    result[uid] = _process_matrix(value)
+                elif isinstance(value, list):
+                    # Assume already a sequence; return as is.
+                    result[uid] = value
+                else:
+                    raise ValueError(f"Unrecognized type for UID {uid}.")
+            return result
+        else:
+            raise ValueError("Input data must be a numpy array or a dictionary.")
+
 
 # Example usage:
 if __name__ == "__main__":
@@ -386,3 +564,51 @@ if __name__ == "__main__":
     
     # Plot using the arrays with default title and labels.
     grid.plot_grid(longitudes=longitudes, latitudes=latitudes)
+    # Create a sample DataFrame (assumed to have already been discretized into grid cells).
+    data = {
+        "Uid": [0, 0, 0, 1, 1],
+        "Timestamp": [
+            "2009-05-25 20:56:10+00:00",
+            "2009-05-25 21:35:28+00:00",
+            "2009-05-25 21:42:47+00:00",
+            "2010-09-29 20:28:44+00:00",
+            "2010-10-08 21:29:31+00:00"
+        ],
+        "Date": ["2009-05-25", "2009-05-25", "2009-05-25", "2010-09-29", "2010-10-08"],
+        "Latitude": [37.774929, 37.600747, 37.600747, 37.792818, 37.737615],
+        "Longitude": [-122.419415, -122.382376, -122.382376, -122.392636, -122.240925],
+        # For demonstration, assume these are the discretized values:
+        "cell_x": [186, 186, 186, 187, 187],
+        "cell_y": [91, 90, 90, 91, 90]
+    }
+    ch_df = pd.DataFrame(data)
+    
+    # Instantiate CoordDiscretizer for sequence output.
+    discretizer_seq = CoordDiscretizer(start_val=1, mode="order", output="sequence", verbose=True)
+    sequences: Dict[Union[str, int], List[Tuple[int, int]]] = discretizer_seq.fit_transform(
+        ch_df, uid_col="Uid", time_col="Timestamp", date_col="Date", lat_col="cell_y", lon_col="cell_x"
+    )
+    print("Sequences by UID:")
+    for uid, seq in sequences.items():
+        print(f"UID {uid}: {seq}")
+    
+    # Instantiate CoordDiscretizer for matrix output.
+    discretizer_mat = CoordDiscretizer(start_val=1, mode="order", output="matrix", verbose=True)
+    matrices: Dict[Union[str, int], np.ndarray] = discretizer_mat.fit_transform(
+        ch_df, uid_col="Uid", time_col="Timestamp", date_col="Date", lat_col="cell_y", lon_col="cell_x"
+    )
+    print("\nMatrix representations by UID:")
+    for uid, mat in matrices.items():
+        print(f"UID {uid} matrix:\n{mat}\n")
+    
+    # Inverse transform a matrix from UID 0.
+    if 0 in matrices:
+        inv_seq_from_mat: List[Tuple[int, int]] = discretizer_mat.inverse_transform(matrices[0])
+        print("Inverse transformed sequence from UID 0's matrix:")
+        print(inv_seq_from_mat)
+    
+    # Inverse transform using the dict (from transform) directly.
+    inv_seq_from_dict: Dict[Union[str, int], List[Tuple[int, int]]] = discretizer_mat.inverse_transform(sequences)
+    print("\nInverse transformed sequences from dictionary:")
+    for uid, seq in inv_seq_from_dict.items():
+        print(f"UID {uid}: {seq}")

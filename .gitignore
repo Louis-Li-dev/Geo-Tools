@@ -1,4 +1,4 @@
 *.pyc
 test/*
-*.info
+geo_tools.egg-info/*
 build/*

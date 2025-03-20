@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='geo_tools',
-    version='0.1.2',
+    version='0.1.3',
     description='A geospatial tool for looking up countries from coordinates.',
     author='An-Syu Li',
     author_email='yessir0621@gmail.com',

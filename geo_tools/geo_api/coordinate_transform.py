@@ -343,7 +343,6 @@ class CoordinateGrid:
         plt.legend(loc='lower left')
         plt.grid(False)
         plt.show()
-
 class CoordDiscretizer:
     def __init__(self, start_val: int = 1, mode: str = "order", output: str = "sequence", verbose: bool = False) -> None:
         """
@@ -364,17 +363,13 @@ class CoordDiscretizer:
             raise ValueError("mode must be 'order' or 'binary'")
         if output not in ["sequence", "matrix"]:
             raise ValueError("output must be 'sequence' or 'matrix'")
+        
         self.start_val: int = start_val
         self.mode: str = mode
         self.output: str = output
         self.verbose: bool = verbose
-        self._scaling_info: Optional[Dict[str, Union[str, float]]] = None
-        self.fitted_data: Optional[Dict[str, np.ndarray]] = None
-        # In our effective coordinate space, data will be centered to (0,0)
-        self.global_min_effective: Tuple[int, int] = (0, 0)
-        # For now, we assume no additional scaling is applied.
-        # (You can extend this class to include scaling if needed.)
-        self.scaling_method: str = "none"
+        self.global_max_x: Optional[int] = None  # Store global max_x
+        self.global_max_y: Optional[int] = None  # Store global max_y
 
     def _apply_scaling(self, x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -417,30 +412,30 @@ class CoordDiscretizer:
         lon_col: str = "Longitude"
     ) -> Union[Dict[Union[str, int], List[Tuple[int, int]]], Dict[Union[str, int], np.ndarray]]:
         """
-        Transforms coordinate data into sequences by UID.
-
-        Steps:
-          1. Ensure the Timestamp column is datetime.
-          2. For each UID and Date, keep the first record (earliest visit).
-          3. Drop duplicate grid cells for each UID.
-          4. Group by UID to form a sequence of grid cell visits (ordered by Timestamp).
-
-        Depending on self.output, returns either:
-          - A dictionary mapping each UID to a list of (cell_x, cell_y) tuples.
-          - A dictionary mapping each UID to a 2D numpy array (matrix) where visited cells are marked.
-            In "order" mode, cells are filled with increasing order numbers (starting at start_val);
-            in "binary" mode, visited cells are marked with 1.
+        Transforms coordinate data into sequences by UID using a global max grid size.
 
         Returns:
-            A dictionary mapping UID to a sequence or matrix.
+            A dictionary mapping UID to either:
+              - A sequence of visited (cell_x, cell_y) tuples, if `output="sequence"`
+              - A 2D numpy array (matrix), if `output="matrix"`
         """
-        # Ensure the timestamp column is in datetime format.
+        # Ensure the timestamp column is in datetime format
         df[time_col] = pd.to_datetime(df[time_col])
-        # Step 1: For each UID and Date, select the first record (earliest timestamp).
+
+        # Step 1: For each UID and Date, select the first record (earliest timestamp)
         daily_first = df.sort_values(time_col).groupby([uid_col, date_col], as_index=False).first()
-        # Step 2: Drop duplicate grid cells for each UID.
+
+        # Step 2: Drop duplicate grid cells for each UID
         final_df = daily_first.drop_duplicates(subset=[uid_col, lon_col, lat_col], keep="first")
-        # Group by UID to form sequences.
+
+        # Step 3: Compute **global** max_x and max_y (before grouping by UID)
+        self.global_max_x = final_df[lon_col].max()
+        self.global_max_y = final_df[lat_col].max()
+
+        if self.verbose:
+            print(f"[Verbose] Global max_x: {self.global_max_x}, Global max_y: {self.global_max_y}")
+
+        # Step 4: Group by UID and create sequences
         sequences: Dict[Union[str, int], List[Tuple[int, int]]] = {}
         for uid, group in final_df.groupby(uid_col):
             group_sorted = group.sort_values(time_col)
@@ -448,17 +443,18 @@ class CoordDiscretizer:
             sequences[uid] = seq
 
         if self.output == "sequence":
-            return sequences
+            return sequences  # Return sequence if sequence mode is selected
 
-        # Otherwise, create matrix representations.
+        # Otherwise, create matrix representations
         matrices: Dict[Union[str, int], np.ndarray] = {}
         for uid, seq in sequences.items():
             if not seq:
-                matrices[uid] = np.array([])
+                matrices[uid] = np.array([])  # Empty case
                 continue
-            xs, ys = zip(*seq)
-            max_x, max_y = max(xs), max(ys)
-            mat = np.zeros((max_x + 1, max_y + 1), dtype=int)
+
+            # Use **global** max_x and max_y to create a fixed-size matrix
+            mat = np.zeros((self.global_max_x + 1, self.global_max_y + 1), dtype=int)
+
             if self.mode == "order":
                 val = self.start_val
                 for (x, y) in seq:
@@ -467,8 +463,10 @@ class CoordDiscretizer:
             elif self.mode == "binary":
                 for (x, y) in seq:
                     mat[x, y] = 1
+
             matrices[uid] = mat
-        return matrices
+        
+        return matrices  # Return matrix representation
 
     def inverse_transform(
         self,

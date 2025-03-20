@@ -33,6 +33,10 @@ pip install git+https://github.com/Louis-Li-dev/Geo-Tools.git
 - Converts **latitude/longitude** to **country names**  
 - **Note:** Some countries may not be recognized due to dataset limitations  
 
+### `geo_api/coordinate_transform`
+- Discretize **coordinates** for easier modeling.
+- Plot the transformed coordinates for simple analysis.
+
 ### 🔹 Example Usage: Plotting Check-Ins on a World Map  
 
 ```python
@@ -50,9 +54,11 @@ plotter.plot(title='User Check-Ins')
 ```
 
 - **Expected Output:**
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/d6ff04eb-a2b1-4f12-add6-00986e303a47" alt="User Check-Ins">
-</p>
+
+| **Feature** | **Description**                                | **Example**                                                                                                                                         |
+|-------------|------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **geo_plot** | Display coordinates on a map                  | <p align="center"><img src="https://github.com/user-attachments/assets/d6ff04eb-a2b1-4f12-add6-00986e303a47" alt="User Check-Ins"></p>          |
+| **geo_api**  | Discretize float coordinates into integers      | <p align="center"><img src="https://github.com/user-attachments/assets/cf9373f7-8bf0-4353-b4aa-634ae7330ea0" alt="Discretized Coordinates"></p> |
 
 ---
 

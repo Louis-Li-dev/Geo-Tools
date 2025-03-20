@@ -5,16 +5,49 @@ import numpy as np
 from tqdm import tqdm
 from typing import Union, List
 import pandas as pd
+import os
+import json
 
 class CountryLocator:
-    def __init__(self, geojson_url: str = "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"):
+    def __init__(self, 
+                 geojson_url: str = "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson",
+                 cache_path: str = None,
+                 auto_install: bool = True,
+                 verbose: bool = False):
         """
         Downloads GeoJSON data and prepares the country geometries.
         
         Parameters:
             geojson_url (str): URL to the GeoJSON file containing country data.
+            cache_path (str): Local path to store/load the geojson data.
+            auto_install (bool): If True, download and save the data if cache_path is provided 
+                                 but the file does not exist.
+            verbose (bool): If True, print verbose status messages.
         """
-        data = requests.get(geojson_url).json()
+        self.verbose = verbose
+        
+        # If a cache_path is provided, check if the file exists.
+        if cache_path is not None:
+            if os.path.exists(cache_path):
+                if self.verbose:
+                    print(f"[Verbose] Cache file found at {cache_path}. Loading data from file.")
+                with open(cache_path, 'r') as f:
+                    data = json.load(f)
+            else:
+                if auto_install:
+                    if self.verbose:
+                        print(f"[Verbose] Cache file not found at {cache_path}. Downloading data from {geojson_url} and saving to cache.")
+                    data = requests.get(geojson_url).json()
+                    with open(cache_path, 'w') as f:
+                        json.dump(data, f)
+                else:
+                    raise FileNotFoundError(f"Cache file not found at {cache_path} and auto_install is disabled.")
+        else:
+            if self.verbose:
+                print("[Verbose] No cache path provided. Downloading data from URL.")
+            data = requests.get(geojson_url).json()
+
+        # Prepare country geometries.
         self.countries = {}
         for feature in data["features"]:
             geom = feature["geometry"]

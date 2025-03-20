@@ -24,7 +24,7 @@ pip install git+https://github.com/Louis-Li-dev/Geo-Tools.git
 ---
 
 ##  How to Use  
-
+*For documentation, go to [https://louis-li-dev.github.io/Geo-Tools/](https://louis-li-dev.github.io/Geo-Tools/)*
 ###  `geo_plot/map_plot`  
 - Supports **1D, 2D, and 3D data visualization**  
 - Plots **coordinates on a world map**  

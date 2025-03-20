@@ -37,7 +37,7 @@ pip install git+https://github.com/Louis-Li-dev/Geo-Tools.git
 
 ```python
 import pandas as pd
-from geo_plot.map_plot import CoordinatePlotter
+from geo_tools.geo_plot.map_plot import CoordinatePlotter
 
 # Load sample data (modify 'xxx.csv' to your file)
 df = pd.read_csv('./xxx.csv', nrows=10000)

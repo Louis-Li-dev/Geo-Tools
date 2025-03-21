@@ -401,7 +401,6 @@ class CoordDiscretizer:
         else:
             raise ValueError("Only 'none' scaling is implemented in this version.")
         return orig_x, orig_y
-
     def fit_transform(
         self,
         df: pd.DataFrame,
@@ -411,24 +410,39 @@ class CoordDiscretizer:
         lat_col: str = "Latitude",
         lon_col: str = "Longitude"
     ) -> Union[Dict[Union[str, int], List[Tuple[int, int]]], Dict[Union[str, int], np.ndarray]]:
-        """
-        Transforms coordinate data into sequences by UID using a global max grid size.
+        # Check for missing uid_col, time_col, date_col and create defaults if needed.
+        df = df.copy()
+        if uid_col not in df.columns:
+            if self.verbose:
+                print(f"[Verbose] UID column '{uid_col}' not found. Creating default UID column with value 0.")
+            df[uid_col] = 0
 
-        Returns:
-            A dictionary mapping UID to either:
-              - A sequence of visited (cell_x, cell_y) tuples, if `output="sequence"`
-              - A 2D numpy array (matrix), if `output="matrix"`
-        """
-        # Ensure the timestamp column is in datetime format
-        df[time_col] = pd.to_datetime(df[time_col])
+        if time_col in df.columns:
+            df[time_col] = pd.to_datetime(df[time_col])
+        else:
+            if self.verbose:
+                print(f"[Verbose] Timestamp column '{time_col}' not found. Skipping timestamp conversion.")
 
-        # Step 1: For each UID and Date, select the first record (earliest timestamp)
-        daily_first = df.sort_values(time_col).groupby([uid_col, date_col], as_index=False).first()
+        if date_col not in df.columns:
+            if time_col in df.columns:
+                df[date_col] = df[time_col].dt.date
+                if self.verbose:
+                    print(f"[Verbose] Date column '{date_col}' not found. Created from '{time_col}'.")
+            else:
+                if self.verbose:
+                    print(f"[Verbose] Date column '{date_col}' not found and '{time_col}' not available. Creating default date '1970-01-01'.")
+                df[date_col] = "1970-01-01"
+
+        # Step 1: For each UID and Date, select the first record (earliest timestamp) if possible.
+        if time_col in df.columns:
+            daily_first = df.sort_values(time_col).groupby([uid_col, date_col], as_index=False).first()
+        else:
+            daily_first = df.groupby([uid_col, date_col], as_index=False).first()
 
         # Step 2: Drop duplicate grid cells for each UID
         final_df = daily_first.drop_duplicates(subset=[uid_col, lon_col, lat_col], keep="first")
 
-        # Step 3: Compute **global** max_x and max_y (before grouping by UID)
+        # Step 3: Compute global max_x and max_y (before grouping by UID)
         self.global_max_x = final_df[lon_col].max()
         self.global_max_y = final_df[lat_col].max()
 
@@ -438,7 +452,7 @@ class CoordDiscretizer:
         # Step 4: Group by UID and create sequences
         sequences: Dict[Union[str, int], List[Tuple[int, int]]] = {}
         for uid, group in final_df.groupby(uid_col):
-            group_sorted = group.sort_values(time_col)
+            group_sorted = group.sort_values(time_col) if time_col in group.columns else group
             seq: List[Tuple[int, int]] = list(zip(group_sorted[lon_col], group_sorted[lat_col]))
             sequences[uid] = seq
 
@@ -452,7 +466,7 @@ class CoordDiscretizer:
                 matrices[uid] = np.array([])  # Empty case
                 continue
 
-            # Use **global** max_x and max_y to create a fixed-size matrix
+            # Use global max_x and max_y to create a fixed-size matrix
             mat = np.zeros((self.global_max_x + 1, self.global_max_y + 1), dtype=int)
 
             if self.mode == "order":
@@ -465,8 +479,9 @@ class CoordDiscretizer:
                     mat[x, y] = 1
 
             matrices[uid] = mat
-        
+
         return matrices  # Return matrix representation
+
 
     def inverse_transform(
         self,

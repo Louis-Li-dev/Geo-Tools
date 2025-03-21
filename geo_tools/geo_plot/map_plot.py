@@ -3,7 +3,9 @@ from mpl_toolkits.basemap import Basemap
 import pandas as pd
 import warnings
 from typing import Optional, Union, List
-
+import numpy as np
+import matplotlib.colors as mcolors
+from scipy.stats import gaussian_kde
 class CoordinatePlotter:
     """
     A flexible plotter class to visualize geographical coordinates on a map.
@@ -129,25 +131,23 @@ class CoordinatePlotter:
              land_color: str = 'beige',
              water_color: str = 'lightblue',
              coastline_width: float = 0.1,
-             country_width: float = 0.2):
+             country_width: float = 0.2,
+             overlay_density_background: bool = False,  # New option for KDE background
+             density_levels: int = 20,
+             density_cmap: str = 'viridis',
+             density_based_alpha: bool = False,         # New option for per-point alpha based on density
+             min_alpha: float = 0.3,
+             max_alpha: float = 1.0):
         """
         Plots geographical coordinates on a map.
 
-        Parameters:
-            title (str): Title of the plot. Default is "Coordinate Plotter".
-            xlabel (str): Label for the x-axis (Longitude). Default is "Longitude".
-            ylabel (str): Label for the y-axis (Latitude). Default is "Latitude".
-            legend_loc (str): Location of the plot legend. Default is "lower left".
-            point_color (str): Color of the points plotted. Default is 'red'.
-            point_edge_color (str): Edge color of the points plotted. Default is 'darkred'.
-            point_size (int): Size of the plotted points. Default is 30.
-            land_color (str): Color used for land on the map. Default is 'beige'.
-            water_color (str): Color used for water on the map. Default is 'lightblue'.
-            coastline_width (float): Width of coastline lines. Default is 0.1.
-            country_width (float): Width of country boundary lines. Default is 0.2.
-
-        Returns:
-            None: The method displays a plot but does not return any value.
+        Additional parameters:
+            overlay_density_background (bool): If True, overlays a Gaussian KDE background.
+            density_levels (int): Number of contour levels for the density plot.
+            density_cmap (str): Colormap used for the density plot.
+            density_based_alpha (bool): If True, vary the alpha of each point based on its local density.
+            min_alpha (float): Minimum alpha value for the lowest density.
+            max_alpha (float): Maximum alpha value for the highest density.
         """
         plt.rcParams['font.family'] = "Times New Roman"
         fig, ax = plt.subplots(figsize=self.figsize)
@@ -162,13 +162,49 @@ class CoordinatePlotter:
         m.drawmapboundary(fill_color=water_color)
         m.fillcontinents(color=land_color, lake_color=water_color)
 
-        x, y = m(self.filtered_df['Longitude'].values, self.filtered_df['Latitude'].values)
-        ax.scatter(x, y, color=point_color, marker='o', edgecolors=point_edge_color,
-                   s=point_size, label="Locations")
+        # Get coordinate arrays
+        lons = self.filtered_df['Longitude'].values
+        lats = self.filtered_df['Latitude'].values
+        x, y = m(lons, lats)
+
+        # If density background overlay is enabled, compute and plot KDE contours.
+        if overlay_density_background:
+            # Compute KDE in longitude-latitude space
+            coords = np.vstack([lons, lats])
+            kde = gaussian_kde(coords)
+            # Define grid boundaries based on data (with some margin)
+            lon_min, lon_max = lons.min() - 0.5, lons.max() + 0.5
+            lat_min, lat_max = lats.min() - 0.5, lats.max() + 0.5
+            X, Y = np.mgrid[lon_min:lon_max:200j, lat_min:lat_max:200j]
+            positions = np.vstack([X.ravel(), Y.ravel()])
+            Z = np.reshape(kde(positions), X.shape)
+            # Plot density contours in the background.
+            # Note: the contour is plotted in lon/lat space and aligns with the map.
+            cs = ax.contourf(X, Y, Z, levels=density_levels, cmap=density_cmap, alpha=0.6)
+            plt.colorbar(cs, ax=ax, label="Density")
+
+        # If density-based alpha is enabled, compute density per point and adjust alpha.
+        if density_based_alpha:
+            coords = np.vstack([lons, lats])
+            kde = gaussian_kde(coords)
+            densities = kde(coords)
+            # Normalize densities to [0,1]
+            dens_norm = (densities - densities.min()) / (densities.max() - densities.min())
+            # Map normalized density to alpha range
+            alphas = min_alpha + (max_alpha - min_alpha) * dens_norm
+            # Create a list of RGBA colors for each point based on the provided point_color.
+            base_rgba = mcolors.to_rgba(point_color)
+            point_colors = [(base_rgba[0], base_rgba[1], base_rgba[2], a) for a in alphas]
+            scatter_kwargs = {'c': point_colors, 's': point_size, 'marker': 'o', 'edgecolors': point_edge_color}
+        else:
+            # Use a uniform color and alpha for all points.
+            scatter_kwargs = {'color': point_color, 's': point_size, 'marker': 'o', 'edgecolors': point_edge_color}
+
+        # Plot the scatter points on the map.
+        ax.scatter(x, y, **scatter_kwargs, label="Locations")
 
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(title)
         plt.legend(loc=legend_loc)
-
         plt.show()

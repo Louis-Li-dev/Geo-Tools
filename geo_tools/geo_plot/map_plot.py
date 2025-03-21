@@ -173,9 +173,8 @@ class CoordinatePlotter:
             coords = np.vstack([lons, lats])
             kde = gaussian_kde(coords)
             # Define grid boundaries based on data (with some margin)
-            lon_min, lon_max = lons.min() - 0.5, lons.max() + 0.5
-            lat_min, lat_max = lats.min() - 0.5, lats.max() + 0.5
-            X, Y = np.mgrid[lon_min:lon_max:200j, lat_min:lat_max:200j]
+            X, Y = np.mgrid[self.min_lon:self.max_lon:200j, self.min_lat:self.max_lat:200j]
+
             positions = np.vstack([X.ravel(), Y.ravel()])
             Z = np.reshape(kde(positions), X.shape)
             # Plot density contours in the background.

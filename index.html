@@ -159,7 +159,6 @@
 </head>
 <body>
     
-  
   <!-- Dark Mode Toggle -->
   <button class="toggle-button" id="toggleDarkMode">Toggle Dark Mode</button>
 
@@ -184,7 +183,7 @@
       <hr>
       <p>Install <strong>geo_tools</strong> via pip:</p>
       <pre><code>pip install git+https://github.com/Louis-Li-dev/Geo-Tools.git</code></pre>
-
+      <p>
         This package requires Python 3.6+ and the dependencies listed in the setup.py file (pandas, numpy,
         matplotlib, etc.).
       </p>
@@ -212,30 +211,29 @@
         <strong>Example:</strong>
       </p>
       <pre><code class="language-python">
-      from geo_tools.geo_api.coordinate_lookup import CountryLocator
-      
-      # Initialize with a persistent lookup cache and automatic saving enabled
-      locator = CountryLocator(
-          lookup_cache_path="lookup_cache.pkl",
-          auto_install=True,
-          auto_save_lookup_cache=True,
-          verbose=True
-      )
-      
-      # Single coordinate lookup:
-      country = locator.get_country(-122.4194, 37.7749)
-      print("Country:", country)
-      
-      # Lookup for multiple coordinates:
-      coords = [(-122.4194, 37.7749), (2.3522, 48.8566)]
-      countries = locator.lookup(coords)
-      print("Countries:", countries)
-      
-      # Optionally, manually flush the lookup cache if auto-saving is disabled:
-      locator.flush_cache()
+from geo_tools.geo_api.coordinate_lookup import CountryLocator
+
+# Initialize with a persistent lookup cache and automatic saving enabled
+locator = CountryLocator(
+    lookup_cache_path="lookup_cache.pkl",
+    auto_install=True,
+    auto_save_lookup_cache=True,
+    verbose=True
+)
+
+# Single coordinate lookup:
+country = locator.get_country(-122.4194, 37.7749)
+print("Country:", country)
+
+# Lookup for multiple coordinates:
+coords = [(-122.4194, 37.7749), (2.3522, 48.8566)]
+countries = locator.lookup(coords)
+print("Countries:", countries)
+
+# Optionally, manually flush the lookup cache if auto-saving is disabled:
+locator.flush_cache()
       </code></pre>
       
-
       <h3>CoordinateGrid</h3>
       <hr>
       <p>
@@ -317,7 +315,8 @@ print("Recovered Sequences:", recovered)
       <hr>
       <p>
         <strong>CoordinatePlotter</strong> uses Matplotlib and Basemap to plot latitude/longitude data.
-        It supports filtering by user, year, and sorting by time.
+        It supports filtering by user, year, and sorting by time. In this updated version, you can also overlay a Gaussian KDE density background
+        and/or adjust the transparency of each point based on its local density.
       </p>
       <ul>
         <li><strong>df</strong> (pd.DataFrame): DataFrame containing <code>'Latitude'</code> and <code>'Longitude'</code>.</li>
@@ -325,6 +324,15 @@ print("Recovered Sequences:", recovered)
         <li><strong>year</strong> (int, optional): Filter data by year.</li>
         <li><strong>num_of_samples</strong> (int, optional): Limit the number of plotted samples.</li>
         <li><strong>time_columns</strong> (list, optional): Columns used for chronological sorting.</li>
+        <li><strong>margin</strong> (float): Margin added to the map boundaries.</li>
+        <li><strong>figsize</strong> (tuple): Figure size for the plot.</li>
+        <!-- New parameters -->
+        <li><strong>overlay_density_background</strong> (bool, optional): If True, overlays a Gaussian KDE background.</li>
+        <li><strong>density_levels</strong> (int, optional): Number of contour levels for the density plot.</li>
+        <li><strong>density_cmap</strong> (str, optional): Colormap used for the density plot.</li>
+        <li><strong>density_based_alpha</strong> (bool, optional): If True, varies point transparency based on local density.</li>
+        <li><strong>min_alpha</strong> (float, optional): Minimum alpha for low-density points.</li>
+        <li><strong>max_alpha</strong> (float, optional): Maximum alpha for high-density points.</li>
       </ul>
       <p><strong>Example:</strong></p>
       <pre><code class="language-python">
@@ -338,9 +346,27 @@ df_map = pd.DataFrame({
     'Longitude': [-122.4194, -122.4094, -74.0060, -73.9352]
 })
 
-plotter = CoordinatePlotter(df=df_map, uid=1, year=2021, num_of_samples=None,
-                            time_columns=['Year'], margin=1.5, figsize=(8,6))
-plotter.plot(title="User 1 Check-ins", point_color='blue')
+plotter = CoordinatePlotter(
+    df=df_map,
+    uid=1,
+    year=2021,
+    num_of_samples=None,
+    time_columns=['Year'],
+    margin=1.5,
+    figsize=(8,6)
+)
+
+# Plot with density background overlay and density-based point alpha
+plotter.plot(
+    title="User 1 Check-ins with Density",
+    point_color='blue',
+    overlay_density_background=True,
+    density_levels=20,
+    density_cmap='viridis',
+    density_based_alpha=True,
+    min_alpha=0.3,
+    max_alpha=1.0
+)
       </code></pre>
 
       <h3>plot_and_compare</h3>

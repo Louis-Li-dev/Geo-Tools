@@ -58,6 +58,7 @@ plotter.plot(title='User Check-Ins')
 | **Feature** | **Description**                                | **Example**                                                                                                                                         |
 |-------------|------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | **geo_plot** | Display coordinates on a map                  | <p align="center"><img src="https://github.com/user-attachments/assets/d6ff04eb-a2b1-4f12-add6-00986e303a47" alt="User Check-Ins"></p>          |
+| **geo_plot** |Additional plotting output example                 | <p align="center"><img src="https://github.com/user-attachments/assets/3a1163e0-032b-48f9-9a30-6e9ad0361b8b" alt="User Check-Ins"></p>          |
 | **geo_api**  | Discretize float coordinates into integers      | <p align="center"><img src="https://github.com/user-attachments/assets/cf9373f7-8bf0-4353-b4aa-634ae7330ea0" alt="Discretized Coordinates"></p> |
 
 ---

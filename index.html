@@ -315,8 +315,8 @@ print("Recovered Sequences:", recovered)
       <hr>
       <p>
         <strong>CoordinatePlotter</strong> uses Matplotlib and Basemap to plot latitude/longitude data.
-        It supports filtering by user, year, and sorting by time. In this updated version, you can also overlay a Gaussian KDE density background
-        and/or adjust the transparency of each point based on its local density.
+        It supports filtering by user, year, and sorting by time. In this updated version, you can also overlay a Gaussian KDE density background,
+        adjust the transparency of each point based on its local density, and fine-tune the KDE bandwidth using the <code>bw_method</code> parameter.
       </p>
       <ul>
         <li><strong>df</strong> (pd.DataFrame): DataFrame containing <code>'Latitude'</code> and <code>'Longitude'</code>.</li>
@@ -333,7 +333,10 @@ print("Recovered Sequences:", recovered)
         <li><strong>density_based_alpha</strong> (bool, optional): If True, varies point transparency based on local density.</li>
         <li><strong>min_alpha</strong> (float, optional): Minimum alpha for low-density points.</li>
         <li><strong>max_alpha</strong> (float, optional): Maximum alpha for high-density points.</li>
+        <li><strong>bw_method</strong> (float, optional): Bandwidth adjustment for the Gaussian KDE. A lower value makes the density estimate more localized.</li>
       </ul>
+      <p><strong>KDE Diagrams</strong><br>
+        <img src="./html_pngs/kde.png"></p>
       <p><strong>Example:</strong></p>
       <pre><code class="language-python">
 from geo_tools.geo_plot.map_plot import CoordinatePlotter
@@ -356,7 +359,7 @@ plotter = CoordinatePlotter(
     figsize=(8,6)
 )
 
-# Plot with density background overlay and density-based point alpha
+# Plot with density background overlay, density-based point alpha, and a custom KDE bandwidth.
 plotter.plot(
     title="User 1 Check-ins with Density",
     point_color='blue',
@@ -365,7 +368,8 @@ plotter.plot(
     density_cmap='viridis',
     density_based_alpha=True,
     min_alpha=0.3,
-    max_alpha=1.0
+    max_alpha=1.0,
+    bw_method=0.1  # Adjust the KDE bandwidth for a more localized density estimation
 )
       </code></pre>
 

@@ -57,7 +57,7 @@ class CountryLocator:
         self.countries = {}
         for feature in data["features"]:
             geom = feature["geometry"]
-            country = feature["properties"]["ADMIN"]
+            country = feature["properties"]["name"]
             self.countries[country] = prep(shape(geom))
         print(f"Loaded {len(self.countries)} countries.")
 

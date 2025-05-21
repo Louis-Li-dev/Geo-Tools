@@ -481,7 +481,87 @@ class CoordDiscretizer:
             matrices[uid] = mat
 
         return matrices  # Return matrix representation
+    def transform(
+        self,
+        df: pd.DataFrame,
+        uid_col: str = "Uid",
+        time_col: str = "Timestamp",
+        date_col: str = "Date",
+        lat_col: str = "Latitude",
+        lon_col: str = "Longitude"
+    ) -> Union[
+        Dict[Union[str, int], List[Tuple[int, int]]],
+        Dict[Union[str, int], np.ndarray]
+    ]:
+        """
+        Apply the discretization to new data, using parameters (global_max_x, global_max_y,
+        scaling_info) learned during fit_transform.
 
+        Must call fit_transform() first.
+        """
+        if self.global_max_x is None or self.global_max_y is None:
+            raise ValueError("Must call fit_transform before transform()")
+
+        df = df.copy()
+        # ensure UID column
+        if uid_col not in df.columns:
+            if self.verbose:
+                print(f"[Verbose] UID column '{uid_col}' not found. Creating default 0.")
+            df[uid_col] = 0
+
+        # parse timestamps & dates
+        if time_col in df.columns:
+            df[time_col] = pd.to_datetime(df[time_col])
+        if date_col not in df.columns:
+            if time_col in df.columns:
+                df[date_col] = df[time_col].dt.date
+            else:
+                df[date_col] = "1970-01-01"
+
+        # pick first record per (uid, date)
+        if time_col in df.columns:
+            daily_first = df.sort_values(time_col).groupby([uid_col, date_col], as_index=False).first()
+        else:
+            daily_first = df.groupby([uid_col, date_col], as_index=False).first()
+
+        # drop duplicate visits to the same grid cell
+        daily_first = daily_first.drop_duplicates(subset=[uid_col, lon_col, lat_col], keep="first")
+
+        # build sequences
+        sequences: Dict[Union[str, int], List[Tuple[int, int]]] = {}
+        for uid, grp in daily_first.groupby(uid_col):
+            grp_sorted = grp.sort_values(time_col) if time_col in grp.columns else grp
+            # optionally: apply scaling to lon/lat here if you have implemented it
+            xs = grp_sorted[lon_col].to_numpy()
+            ys = grp_sorted[lat_col].to_numpy()
+            # if you want to support scaling:
+            # xs, ys = self._apply_scaling(xs, ys)
+            seq = list(zip(xs.astype(int), ys.astype(int)))
+            sequences[uid] = seq
+
+        if self.output == "sequence":
+            return sequences
+
+        # otherwise build matrices
+        matrices: Dict[Union[str, int], np.ndarray] = {}
+        for uid, seq in sequences.items():
+            if not seq:
+                matrices[uid] = np.zeros((0, 0), dtype=int)
+                continue
+
+            mat = np.zeros((self.global_max_x + 1, self.global_max_y + 1), dtype=int)
+            if self.mode == "order":
+                val = self.start_val
+                for x, y in seq:
+                    mat[x, y] = val
+                    val += 1
+            else:  # binary
+                for x, y in seq:
+                    mat[x, y] = 1
+
+            matrices[uid] = mat
+
+        return matrices
 
     def inverse_transform(
         self,
